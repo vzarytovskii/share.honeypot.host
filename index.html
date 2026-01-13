@@ -2,9 +2,8 @@
 <html lang="en">
  <head>
      <meta charset="UTF-8" />
-     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
      <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover" />
-     <title>Share</title>
+     <title>Editor</title>
      <style>
 
          :root {
@@ -56,21 +55,40 @@
          }
 
          body {
-           font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+           font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
            background: var(--bg);
            color: var(--text-primary);
            display: flex;
-           padding: 1rem;
            transition: background-color 0.3s ease, color 0.3s ease;
            line-height: 1.6;
+           min-height: 100vh;
+           min-height: 100dvh;
+           width: 100%;
+         }
+
+         main {
+           background: var(--bg);
+           min-height: 100vh;
+           min-height: 100dvh;
+           width: 100%;
+           outline: none;
+           padding: 1rem;
          }
      </style>
-
-
  </head>
  <body>
-     <main>
-         Hi
-     </main>
+   <main contenteditable="true" autofocus>
+
+   </main>
+   <script>
+     var main = document.querySelector('main');
+     main.addEventListener('keydown', (e) => {
+       if (e.key === 'Enter' && !e.shiftKey) {
+         e.preventDefault();
+         document.execCommand('insertLineBreak');
+       }
+
+     });
+   </script>
  </body>
 </html>
