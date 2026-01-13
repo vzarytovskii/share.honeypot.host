@@ -5,7 +5,6 @@
      <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover" />
      <title>Editor</title>
      <style>
-
          :root {
            --bg: #fafafa;
            --surface: #ffffff;
@@ -77,18 +76,65 @@
      </style>
  </head>
  <body>
-   <main contenteditable="true" autofocus>
-
+   <main contenteditable='true' autofocus>
    </main>
    <script>
-     var main = document.querySelector('main');
-     main.addEventListener('keydown', (e) => {
-       if (e.key === 'Enter' && !e.shiftKey) {
-         e.preventDefault();
-         document.execCommand('insertLineBreak');
-       }
+      const editor = document.querySelector('main');
+      const fragment = window.location.hash.replace('#', '');
 
-     });
+      const debounce = (callback, wait) => {
+          let timeoutId = null;
+          return (...args) => {
+              window.clearTimeout(timeoutId);
+              timeoutId = window.setTimeout(() => {
+                  callback(...args);
+              }, wait);
+          };
+      }
+
+      const resetCursor = (editor) => {
+          const range = document.createRange();
+          const sel = window.getSelection();
+          range.selectNodeContents(editor);
+          range.collapse(false);
+          sel.removeAllRanges();
+          sel.addRange(range);
+      }
+
+      const setContent = (editor, content) => {
+          editor.innerHTML = atob(decodeURIComponent(content));
+          resetCursor(editor);
+      }
+
+      const setFragment = (editor, content) => {
+          window.location.hash = btoa(content);
+      }
+
+      document.addEventListener("DOMContentLoaded", (_) => {
+          setContent(editor, fragment);
+      })
+
+      editor.addEventListener('keyup', (_) => {
+          if (editor.innerHTML === '<br>') {
+              editor.innerHTML = '';
+          }
+          setFragment(editor, editor.innerHTML);
+      });
+
+      editor.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              // This is actually deprecated but still supported by majority of browsers.
+              // Alternative will probably be something like inserting a line break (<br/>).
+              document.execCommand('insertLineBreak');
+          }
+
+          if (e.key === 'Tab') {
+              e.preventDefault();
+              document.execCommand('insertText', false, '    ');
+          }
+
+      });
    </script>
  </body>
 </html>
