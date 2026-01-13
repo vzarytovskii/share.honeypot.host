@@ -3,6 +3,7 @@
  <head>
      <meta charset="UTF-8" />
      <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover" />
+     <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
      <title>Editor</title>
      <style>
          :root {
@@ -143,8 +144,11 @@
           resetCursor(editor);
       }
 
-      const setFragment = debounce(async (editor, content) => {
-          window.location.hash = await deflate(content);
+      const setFragment = debounce(async (editor) => {
+          if (editor.innerHTML === '<br>') {
+              editor.innerHTML = '';
+          }
+          window.location.hash = await deflate(editor.innerHTML);
       }, 300);
 
       document.addEventListener("DOMContentLoaded", (_) => {
@@ -152,10 +156,7 @@
       })
 
       editor.addEventListener('keyup', (_) => {
-          if (editor.innerHTML === '<br>') {
-              editor.innerHTML = '';
-          }
-          setFragment(editor, editor.innerHTML);
+          setFragment(editor);
       });
 
       editor.addEventListener('keydown', (e) => {
@@ -168,9 +169,13 @@
 
           if (e.key === 'Tab') {
               e.preventDefault();
-              document.execCommand('insertText', false, '    ');
+              document.execCommand('insertText', false, '\t');
           }
 
+      });
+
+      editor.addEventListener('blur', (_) => {
+          setFragment(editor);
       });
    </script>
  </body>
