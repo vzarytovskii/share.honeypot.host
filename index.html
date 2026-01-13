@@ -74,14 +74,47 @@
            outline: none;
            padding: 1rem;
          }
+
+         .compressed-fragment-count-widget {
+           position: fixed;
+           bottom: 1rem;
+           right: 1rem;
+           background: var(--surface);
+           border: 1px solid var(--border);
+           padding: 0.2rem 0.5rem;
+           font-size: 0.875rem;
+           color: var(--text-secondary);
+           font-family: monospace;
+           z-index: 1000;
+           width: 23ch;
+           text-align: left;
+           overflow: hidden;
+           align-items: center;
+           justify-content: right;
+         }
      </style>
  </head>
  <body>
    <main contenteditable='true' autofocus>
    </main>
+   <div class="compressed-fragment-count-widget">
+     Deflated: <span id="compressed-fragment-count">0</span> / <span id="compressed-fragment-allowed">0</span>
+   </div>
    <script>
       const editor = document.querySelector('main');
+      const charCountEl = document.getElementById('compressed-fragment-count');
+      const charAllowedEl = document.getElementById('compressed-fragment-allowed');
       const fragment = window.location.hash.replace('#', '');
+
+      const maxUrlSize = 2000;
+      const baseUrl = window.location.href.split('#')[0];
+      const allowedChars = maxUrlSize - baseUrl.length - 1; // -1 for hash sign
+      charAllowedEl.textContent = allowedChars;
+
+      const updateCharCount = () => {
+          const hash = window.location.hash.replace('#', '');
+          charCountEl.textContent = hash.length;
+      };
 
       const debounce = (callback, wait) => {
           let timeoutId = null;
@@ -148,15 +181,18 @@
           if (editor.innerHTML === '<br>') {
               editor.innerHTML = '';
           }
-          window.location.hash = await deflate(editor.innerHTML);
-      }, 300);
+          const hash = await deflate(editor.innerHTML);
+          window.location.hash = hash;
+      }, 100);
 
       document.addEventListener("DOMContentLoaded", (_) => {
           setContent(editor, fragment);
+          updateCharCount();
       })
 
       editor.addEventListener('keyup', (_) => {
           setFragment(editor);
+          updateCharCount();
       });
 
       editor.addEventListener('keydown', (e) => {
@@ -177,6 +213,29 @@
       editor.addEventListener('blur', (_) => {
           setFragment(editor);
       });
+
+      const onIdle = (callback, idleTime = 2000) => {
+        let timeoutId = null;
+
+        const resetTimer = () => {
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(callback, idleTime);
+        };
+
+        const events = ['change','click','keydown','keyup','load','mousedown','mousemove','mouseup','orientationchange','resize','scroll','touchend','touchmove','touchstart'];
+        events.forEach(event => document.addEventListener(event, resetTimer));
+
+        document.addEventListener('visibilitychange', () => {
+          document.hidden ? callback() : resetTimer();
+        });
+
+        resetTimer();
+      };
+
+      onIdle(() => {
+        setFragment(editor);
+      }, 2000);
+
    </script>
  </body>
 </html>
