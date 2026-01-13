@@ -183,16 +183,15 @@
           }
           const hash = await deflate(editor.innerHTML);
           window.location.hash = hash;
+          updateCharCount();
       }, 100);
 
       document.addEventListener("DOMContentLoaded", (_) => {
           setContent(editor, fragment);
-          updateCharCount();
       })
 
       editor.addEventListener('keyup', (_) => {
           setFragment(editor);
-          updateCharCount();
       });
 
       editor.addEventListener('keydown', (e) => {
