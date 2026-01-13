@@ -86,34 +86,63 @@
            color: var(--text-secondary);
            font-family: monospace;
            z-index: 1000;
-           width: 23ch;
-           text-align: left;
+           width: 24ch;
            overflow: hidden;
-           align-items: center;
-           justify-content: right;
+           display: flex;
+           justify-content: space-between;
+         }
+
+         .compressed-fragment-count-widget.warning {
+           color: #ca8a04;
+         }
+
+         @media (prefers-color-scheme: dark) {
+           .compressed-fragment-count-widget.warning {
+             color: #facc15;
+           }
+         }
+
+         .compressed-fragment-count-widget.error {
+           color: #dc2626;
+         }
+
+         @media (prefers-color-scheme: dark) {
+           .compressed-fragment-count-widget.error {
+             color: #f87171;
+           }
          }
      </style>
  </head>
  <body>
    <main contenteditable='true' autofocus>
    </main>
-   <div class="compressed-fragment-count-widget">
-     Deflated: <span id="compressed-fragment-count">0</span> / <span id="compressed-fragment-allowed">0</span>
+   <div class="compressed-fragment-count-widget" title="This is a very rought estimation of the deflated fragment size. Actual size may vary depending on the content.">
+     <span>Deflated:</span>
+     <span><span id="compressed-fragment-count">0</span> / <span id="compressed-fragment-allowed">0</span></span>
    </div>
    <script>
       const editor = document.querySelector('main');
       const charCountEl = document.getElementById('compressed-fragment-count');
       const charAllowedEl = document.getElementById('compressed-fragment-allowed');
+      const counterWidget = document.querySelector('.compressed-fragment-count-widget');
       const fragment = window.location.hash.replace('#', '');
 
-      const maxUrlSize = 2000;
+      const maxUrlSize = 50_000; // An arbitrary limit for fragment specifically, which I've found somewhere on SO.
       const baseUrl = window.location.href.split('#')[0];
       const allowedChars = maxUrlSize - baseUrl.length - 1; // -1 for hash sign
       charAllowedEl.textContent = allowedChars;
 
       const updateCharCount = () => {
           const hash = window.location.hash.replace('#', '');
-          charCountEl.textContent = hash.length;
+          const currentLength = hash.length;
+          charCountEl.textContent = currentLength;
+
+          counterWidget.classList.remove('warning', 'error');
+          if (currentLength >= allowedChars) {
+              counterWidget.classList.add('error');
+          } else if (currentLength >= allowedChars - 100) {
+              counterWidget.classList.add('warning');
+          }
       };
 
       const debounce = (callback, wait) => {
@@ -194,7 +223,29 @@
           setFragment(editor);
       });
 
+      const isAtLimit = () => {
+          const hash = window.location.hash.replace('#', '');
+          return hash.length >= allowedChars;
+      };
+
+      // This is dumb, there might be a better way to detect a non-insertions.
+      const isInsertingContent = (e) => {
+          const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Escape'];
+          if (allowedKeys.includes(e.key)) return false;
+
+          if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'x', 'z', 'y'].includes(e.key.toLowerCase())) return false;
+
+          if (e.shiftKey && e.key.startsWith('Arrow')) return false;
+
+          return true;
+      };
+
       editor.addEventListener('keydown', (e) => {
+          if (isAtLimit() && isInsertingContent(e)) {
+              e.preventDefault();
+              return;
+          }
+
           if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
               // This is actually deprecated but still supported by majority of browsers.
