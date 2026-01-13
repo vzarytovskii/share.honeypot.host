@@ -102,6 +102,8 @@
       }
 
       // A very dumb compression and decompression implementaion.
+      // Probably need to revisit it in future.
+      // Also, dumb handling of non-ASCII, not proud of it.
       const deflate = async (str) => {
           if (!str) return '';
 
@@ -116,11 +118,7 @@
           const compressed = await new Response(cs.readable).arrayBuffer();
           const bytes = new Uint8Array(compressed);
 
-          let binary = '';
-
-          for (let i = 0; i < bytes.length; i++) {
-              binary += String.fromCharCode(bytes[i]);
-          }
+          const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
 
           return btoa(binary);
       }
@@ -129,11 +127,7 @@
           if (!str) return '';
 
           const binary = atob(str);
-          const bytes = new Uint8Array(binary.length);
-
-          for (let i = 0; i < binary.length; i++) {
-              bytes[i] = binary.charCodeAt(i);
-          }
+          const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
 
           const ds = new DecompressionStream('deflate');
           const writer = ds.writable.getWriter();
