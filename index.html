@@ -101,14 +101,57 @@
           sel.addRange(range);
       }
 
-      const setContent = (editor, content) => {
-          editor.innerHTML = atob(decodeURIComponent(content));
+      // A very dumb compression and decompression implementaion.
+      const deflate = async (str) => {
+          if (!str) return '';
+
+          const encoder = new TextEncoder();
+          const data = encoder.encode(str);
+          const cs = new CompressionStream('deflate');
+          const writer = cs.writable.getWriter();
+
+          writer.write(data);
+          writer.close();
+
+          const compressed = await new Response(cs.readable).arrayBuffer();
+          const bytes = new Uint8Array(compressed);
+
+          let binary = '';
+
+          for (let i = 0; i < bytes.length; i++) {
+              binary += String.fromCharCode(bytes[i]);
+          }
+
+          return btoa(binary);
+      }
+
+      const inflate = async (str) => {
+          if (!str) return '';
+
+          const binary = atob(str);
+          const bytes = new Uint8Array(binary.length);
+
+          for (let i = 0; i < binary.length; i++) {
+              bytes[i] = binary.charCodeAt(i);
+          }
+
+          const ds = new DecompressionStream('deflate');
+          const writer = ds.writable.getWriter();
+          writer.write(bytes);
+          writer.close();
+
+          const decompressed = await new Response(ds.readable).arrayBuffer();
+          return new TextDecoder().decode(decompressed);
+      }
+
+      const setContent = async (editor, content) => {
+          editor.innerHTML = await inflate(content);
           resetCursor(editor);
       }
 
-      const setFragment = (editor, content) => {
-          window.location.hash = btoa(content);
-      }
+      const setFragment = debounce(async (editor, content) => {
+          window.location.hash = await deflate(content);
+      }, 300);
 
       document.addEventListener("DOMContentLoaded", (_) => {
           setContent(editor, fragment);
