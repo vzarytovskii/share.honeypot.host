@@ -258,6 +258,10 @@
               document.execCommand('insertText', false, '\t');
           }
 
+          if (e.key === 'Escape') {
+              editor.blur();
+          }
+
       });
 
       editor.addEventListener('blur', (_) => {
