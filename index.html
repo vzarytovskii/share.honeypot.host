@@ -227,6 +227,11 @@
           return true;
       };
 
+      // This is actually deprecated but still supported by majority of browsers.
+      // Alternative will probably be something like inserting a line break (<br/>), or any node actually, directly.
+      const insertText = (text) => document.execCommand('insertText', false, text);
+      const insertLineBreak = () => document.execCommand('insertLineBreak');
+
       editor.addEventListener('keydown', (e) => {
           if (isAtLimit() && isInsertingContent(e)) {
               e.preventDefault();
@@ -235,14 +240,12 @@
 
           if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
-              // This is actually deprecated but still supported by majority of browsers.
-              // Alternative will probably be something like inserting a line break (<br/>).
-              document.execCommand('insertLineBreak');
+              insertLineBreak();
           }
 
           if (e.key === 'Tab') {
               e.preventDefault();
-              document.execCommand('insertText', false, '\t');
+              insertText('\t');
           }
 
           if (e.key === 'Escape') {
