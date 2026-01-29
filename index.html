@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang='en'>
  <head>
-     <meta charset="UTF-8" />
-     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover" />
-     <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+     <meta charset='UTF-8' />
+     <meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover' />
+     <meta http-equiv='cache-control' content='no-cache, no-store, must-revalidate'>
      <title>Editor</title>
      <style>
          :root {
@@ -49,7 +49,7 @@
          }
 
          body {
-           font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+           font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
            background: var(--bg);
            color: var(--text-primary);
            display: flex;
@@ -96,11 +96,11 @@
      </style>
  </head>
  <body>
-   <main contenteditable='true' autofocus>
+    <main contenteditable='true' autofocus>
    </main>
-   <div class="compressed-fragment-count-widget" title="This is a very rought estimation of the deflated fragment size. Actual size may vary depending on the content.">
+   <div class='compressed-fragment-count-widget' title='This is a very rought estimation of the deflated fragment size. Actual size may vary depending on the content.'>
      <span>Deflated:</span>
-     <span><span id="compressed-fragment-count">0</span> / <span id="compressed-fragment-allowed">0</span></span>
+     <span><span id='compressed-fragment-count'>0</span> / <span id='compressed-fragment-allowed'>0</span></span>
    </div>
    <script>
       const editor = document.querySelector('main');
@@ -197,15 +197,7 @@
           const hash = await deflate(editor.innerHTML);
           window.location.hash = hash;
           updateCharCount();
-      }, 100);
-
-      document.addEventListener("DOMContentLoaded", (_) => {
-          setContent(editor, getHash());
-      })
-
-      editor.addEventListener('keyup', (_) => {
-          setFragment(editor);
-      });
+      }, 200);
 
       const isAtLimit = () => {
           return getHash().length >= allowedChars;
@@ -231,6 +223,14 @@
       // Alternative will probably be something like inserting a line break (<br/>), or any node actually, directly.
       const insertText = (text) => document.execCommand('insertText', false, text);
       const insertLineBreak = () => document.execCommand('insertLineBreak');
+
+      document.addEventListener('DOMContentLoaded', (_) => {
+          setContent(editor, getHash());
+      })
+
+      editor.addEventListener('keyup', (_) => {
+          setFragment(editor);
+      });
 
       editor.addEventListener('keydown', (e) => {
           if (isAtLimit() && isInsertingContent(e)) {
