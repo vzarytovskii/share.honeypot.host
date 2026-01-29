@@ -228,14 +228,18 @@
           return hash.length >= allowedChars;
       };
 
-      // This is dumb, there might be a better way to detect a non-insertions.
+      // Keys that don't insert content (navigation, deletion, escape).
+      // This is dumb, there might be a better way to detect non-insertions.
+      const NAVIGATION_KEYS = new Set(['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Escape']);
+      const SHORTCUT_KEYS = new Set(['a', 'c', 'x', 'z', 'y']);
+
       const isInsertingContent = (e) => {
-          const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Escape'];
-          if (allowedKeys.includes(e.key)) return false;
-
-          if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'x', 'z', 'y'].includes(e.key.toLowerCase())) return false;
-
-          if (e.shiftKey && e.key.startsWith('Arrow')) return false;
+          if (NAVIGATION_KEYS.has(e.key))
+            return false;
+          if ((e.ctrlKey || e.metaKey) && SHORTCUT_KEYS.has(e.key.toLowerCase()))
+            return false;
+          if (e.shiftKey && e.key.startsWith('Arrow'))
+            return false;
 
           return true;
       };
