@@ -256,22 +256,17 @@
       }, { passive: true });
 
       const onIdle = (callback, idleTime = 2000) => {
-        let timeoutId = null;
-
-        const resetTimer = () => {
-          clearTimeout(timeoutId);
-          timeoutId = setTimeout(callback, idleTime);
-        };
+        const debouncedCallback = debounce(callback, idleTime);
 
         // TODO: Are some of these redundant? Like `pointerdown` should cover `mouse*` and `touch*`?
         const events = ['change','click','keydown','keyup','load','mousedown','mousemove','mouseup','orientationchange', 'pointerdown', 'resize','scroll','touchend','touchmove','touchstart'];
-        events.forEach(event => document.addEventListener(event, resetTimer, { passive: true }));
+        events.forEach(e => document.addEventListener(e, debouncedCallback, { passive: true }));
 
         document.addEventListener('visibilitychange', () => {
-          document.hidden ? callback() : resetTimer();
+          document.hidden ? callback() : debouncedCallback();
         }, { passive: true });
 
-        resetTimer();
+        debouncedCallback();
       };
 
       onIdle(() => {
