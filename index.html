@@ -1,99 +1,102 @@
 <!DOCTYPE html>
 <html lang='en'>
- <head>
-     <meta charset='UTF-8' />
-     <meta name='viewport' content='width=device-width,initial-scale=1,viewport-fit=cover' />
-     <meta http-equiv='cache-control' content='no-cache, no-store, must-revalidate'>
-     <title>Editor</title>
-     <style>
-         :root {
-           --bg: #fafafa;
-           --text-primary: #0a0a0a;
-           --text-secondary: #737373;
-           --border: #e5e5e5;
-         }
+  <head>
+    <meta charset='UTF-8' />
+    <meta name='viewport' content='width=device-width,initial-scale=1,viewport-fit=cover' />
+    <meta http-equiv='cache-control' content='no-cache, no-store, must-revalidate'>
+    <meta name='description'
+      content='A minimal text editor that stores content directly in the URL.'>
+    <title>Editor</title>
+    <style>
+      :root {
+        --bg: #fafafa;
+        --text-primary: #0a0a0a;
+        --text-secondary: #737373;
+        --border: #e5e5e5;
+      }
 
-         @media (prefers-color-scheme: dark) {
-           :root {
-             --bg: #0a0a0a;
-             --text-primary: #fafafa;
-             --text-secondary: #636363;
-             --border: #262626;
-           }
-         }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0a0a0a;
+          --text-primary: #fafafa;
+          --text-secondary: #636363;
+          --border: #262626;
+        }
+      }
 
-         *,
-         *::before,
-         *::after {
-           margin: 0;
-           padding: 0;
-           box-sizing: border-box;
-         }
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-         html {
-           color-scheme: light dark;
-           -webkit-text-size-adjust: none;
-           -webkit-tap-highlight-color: transparent;
-           -webkit-font-smoothing: antialiased;
-           text-size-adjust: none;
-           hanging-punctuation: first allow-end last;
-           interpolate-size: allow-keywords;
-           scroll-behavior: smooth;
-           scrollbar-gutter: stable;
-         }
+      html {
+        color-scheme: light dark;
+        -webkit-text-size-adjust: none;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-font-smoothing: antialiased;
+        text-size-adjust: none;
+        hanging-punctuation: first allow-end last;
+        interpolate-size: allow-keywords;
+        scroll-behavior: smooth;
+        scrollbar-gutter: stable;
+      }
 
-         body {
-           font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-           background: var(--bg);
-           color: var(--text-primary);
-           display: flex;
-           transition: background-color 0.3s ease, color 0.3s ease;
-           line-height: 1.6;
-           min-height: 100vh;
-           min-height: 100dvh;
-           width: 100%;
-         }
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+        background: var(--bg);
+        color: var(--text-primary);
+        display: flex;
+        transition: background-color 0.3s ease, color 0.3s ease;
+        line-height: 1.6;
+        min-height: 100vh;
+        min-height: 100dvh;
+        width: 100%;
+      }
 
-          main {
-            background: var(--bg);
-            min-height: 100vh;
-            min-height: 100dvh;
-            width: 100%;
-            padding: 1rem;
-            outline: none;
-          }
+      main {
+        background: var(--bg);
+        min-height: 100vh;
+        min-height: 100dvh;
+        width: 100%;
+        padding: 1rem;
+        outline: none;
+      }
 
-          main:empty::before {
-            content: 'Your text goes here…';
-            color: var(--text-secondary);
-            pointer-events: none;
-          }
+      main:empty::before {
+        content: 'Your text goes here…';
+        color: var(--text-secondary);
+        pointer-events: none;
+      }
 
-         .usage-bar {
-           position: fixed;
-           bottom: 0;
-           left: 0;
-           right: 0;
-           height: 3px;
-           background: var(--border);
-           z-index: 1000;
-         }
+      .usage-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--border);
+        z-index: 1000;
+      }
 
-         .usage-bar-fill {
-           height: 100%;
-           width: 0%;
-           background: hsl(120, 60%, 45%);
-           transition: width 0.15s ease-out, background-color 0.15s ease-out;
-         }
-     </style>
- </head>
- <body>
+      .usage-bar-fill {
+        height: 100%;
+        width: 0%;
+        background: hsl(120, 60%, 45%);
+        transition: width 0.15s ease-out, background-color 0.15s ease-out;
+      }
+    </style>
+  </head>
+
+  <body>
     <main contenteditable='true' autofocus>
-   </main>
-   <div class='usage-bar' title='URL space usage'>
-     <div class='usage-bar-fill' id='usage-bar-fill'></div>
-   </div>
-   <script>
+    </main>
+    <div class='usage-bar' title='URL space usage'>
+      <div class='usage-bar-fill' id='usage-bar-fill'></div>
+    </div>
+    <script>
       const editor = document.querySelector('main');
       const usageBarFill = document.getElementById('usage-bar-fill');
 
@@ -104,87 +107,87 @@
       const getHash = () => location.hash.slice(1);
 
       const updateCharCount = () => {
-          const currentLength = getHash().length;
-          const percentage = Math.min((currentLength / allowedChars) * 100, 100);
+        const currentLength = getHash().length;
+        const percentage = Math.min((currentLength / allowedChars) * 100, 100);
 
-          usageBarFill.style.width = percentage + '%';
+        usageBarFill.style.width = percentage + '%';
 
-          const hue = Math.max(0, 120 - (percentage * 1.2));
-          usageBarFill.style.background = `hsl(${hue}, 70%, 50%)`;
+        const hue = Math.max(0, 120 - (percentage * 1.2));
+        usageBarFill.style.background = `hsl(${hue}, 70%, 50%)`;
       };
 
       const debounce = (callback, wait) => {
-          let timeoutId = null;
-          return (...args) => {
-              window.clearTimeout(timeoutId);
-              timeoutId = window.setTimeout(() => {
-                  callback(...args);
-              }, wait);
-          };
+        let timeoutId = null;
+        return (...args) => {
+          window.clearTimeout(timeoutId);
+          timeoutId = window.setTimeout(() => {
+            callback(...args);
+          }, wait);
+        };
       }
 
       const resetCursor = (editor) => {
-          const range = document.createRange();
-          const sel = window.getSelection();
-          range.selectNodeContents(editor);
-          range.collapse(false);
-          sel.removeAllRanges();
-          sel.addRange(range);
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(editor);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
       }
 
       // A very dumb compression and decompression implementaion.
       // Probably need to revisit it in future.
       // Also, dumb handling of non-ASCII, not proud of it.
       const deflate = async (str) => {
-          if (!str) return '';
+        if (!str) return '';
 
-          const encoder = new TextEncoder();
-          const data = encoder.encode(str);
-          const cs = new CompressionStream('deflate');
-          const writer = cs.writable.getWriter();
+        const encoder = new TextEncoder();
+        const data = encoder.encode(str);
+        const cs = new CompressionStream('deflate');
+        const writer = cs.writable.getWriter();
 
-          writer.write(data);
-          writer.close();
+        writer.write(data);
+        writer.close();
 
-          const compressed = await new Response(cs.readable).arrayBuffer();
-          const bytes = new Uint8Array(compressed);
+        const compressed = await new Response(cs.readable).arrayBuffer();
+        const bytes = new Uint8Array(compressed);
 
-          const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
+        const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
 
-          return btoa(binary);
+        return btoa(binary);
       }
 
       const inflate = async (str) => {
-          if (!str) return '';
+        if (!str) return '';
 
-          const binary = atob(str);
-          const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+        const binary = atob(str);
+        const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
 
-          const ds = new DecompressionStream('deflate');
-          const writer = ds.writable.getWriter();
-          writer.write(bytes);
-          writer.close();
+        const ds = new DecompressionStream('deflate');
+        const writer = ds.writable.getWriter();
+        writer.write(bytes);
+        writer.close();
 
-          const decompressed = await new Response(ds.readable).arrayBuffer();
-          return new TextDecoder().decode(decompressed);
+        const decompressed = await new Response(ds.readable).arrayBuffer();
+        return new TextDecoder().decode(decompressed);
       }
 
       const setContent = async (editor, content) => {
-          editor.innerHTML = await inflate(content);
-          resetCursor(editor);
+        editor.innerHTML = await inflate(content);
+        resetCursor(editor);
       }
 
       const setFragment = debounce(async (editor) => {
-          if (editor.innerHTML === '<br>') {
-              editor.innerHTML = '';
-          }
-          const hash = await deflate(editor.innerHTML);
-          window.location.hash = hash;
-          updateCharCount();
+        if (editor.innerHTML === '<br>') {
+          editor.innerHTML = '';
+        }
+        const hash = await deflate(editor.innerHTML);
+        window.location.hash = hash;
+        updateCharCount();
       }, 200);
 
       const isAtLimit = () => {
-          return getHash().length >= allowedChars;
+        return getHash().length >= allowedChars;
       };
 
       // Keys that don't insert content (navigation, deletion, escape).
@@ -193,14 +196,14 @@
       const SHORTCUT_KEYS = new Set(['a', 'c', 'x', 'z', 'y']);
 
       const isInsertingContent = (e) => {
-          if (NAVIGATION_KEYS.has(e.key))
-            return false;
-          if ((e.ctrlKey || e.metaKey) && SHORTCUT_KEYS.has(e.key.toLowerCase()))
-            return false;
-          if (e.shiftKey && e.key.startsWith('Arrow'))
-            return false;
+        if (NAVIGATION_KEYS.has(e.key))
+          return false;
+        if ((e.ctrlKey || e.metaKey) && SHORTCUT_KEYS.has(e.key.toLowerCase()))
+          return false;
+        if (e.shiftKey && e.key.startsWith('Arrow'))
+          return false;
 
-          return true;
+        return true;
       };
 
       // This is actually deprecated but still supported by majority of browsers.
@@ -209,45 +212,45 @@
       const insertLineBreak = () => document.execCommand('insertLineBreak');
 
       document.addEventListener('DOMContentLoaded', (_) => {
-          setContent(editor, getHash());
-          updateCharCount();
+        setContent(editor, getHash());
+        updateCharCount();
       })
 
       editor.addEventListener('keyup', (_) => {
-          setFragment(editor);
+        setFragment(editor);
       });
 
       editor.addEventListener('keydown', (e) => {
-          if (isAtLimit() && isInsertingContent(e)) {
-              e.preventDefault();
-              return;
-          }
+        if (isAtLimit() && isInsertingContent(e)) {
+          e.preventDefault();
+          return;
+        }
 
-          if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              insertLineBreak();
-          }
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          insertLineBreak();
+        }
 
-          if (e.key === 'Tab') {
-              e.preventDefault();
-              insertText('\t');
-          }
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          insertText('\t');
+        }
 
-          if (e.key === 'Escape') {
-              editor.blur();
-          }
+        if (e.key === 'Escape') {
+          editor.blur();
+        }
 
       });
 
       editor.addEventListener('blur', (_) => {
-          setFragment(editor);
+        setFragment(editor);
       }, { passive: true });
 
       const onIdle = (callback, idleTime = 2000) => {
         const debouncedCallback = debounce(callback, idleTime);
 
         // TODO: Are some of these redundant? Like `pointerdown` should cover `mouse*` and `touch*`?
-        const events = ['change','click','keydown','keyup','load','mousedown','mousemove','mouseup','orientationchange', 'pointerdown', 'resize','scroll','touchend','touchmove','touchstart'];
+        const events = ['change', 'click', 'keydown', 'keyup', 'load', 'mousedown', 'mousemove', 'mouseup', 'orientationchange', 'pointerdown', 'resize', 'scroll', 'touchend', 'touchmove', 'touchstart'];
         events.forEach(e => document.addEventListener(e, debouncedCallback, { passive: true }));
 
         document.addEventListener('visibilitychange', () => {
@@ -261,6 +264,7 @@
         setFragment(editor);
       }, 2000);
 
-   </script>
- </body>
+    </script>
+  </body>
+
 </html>
