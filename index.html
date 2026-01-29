@@ -8,23 +8,17 @@
      <style>
          :root {
            --bg: #fafafa;
-           --surface: #ffffff;
            --text-primary: #0a0a0a;
            --text-secondary: #737373;
            --border: #e5e5e5;
-           --warning: #ca8a04;
-           --error: #dc2626;
          }
 
          @media (prefers-color-scheme: dark) {
            :root {
              --bg: #0a0a0a;
-             --surface: #171717;
              --text-primary: #fafafa;
              --text-secondary: #636363;
              --border: #262626;
-             --warning: #facc15;
-             --error: #f87171;
            }
          }
 
@@ -75,64 +69,48 @@
             pointer-events: none;
           }
 
-         .compressed-fragment-count-widget {
+         .usage-bar {
            position: fixed;
-           bottom: 1rem;
-           right: 1rem;
-           background: var(--surface);
-           border: 1px solid var(--border);
-           padding: 0.2rem 0.5rem;
-           font-size: 0.875rem;
-           color: var(--text-secondary);
-           font-family: monospace;
+           bottom: 0;
+           left: 0;
+           right: 0;
+           height: 3px;
+           background: var(--border);
            z-index: 1000;
-           width: 24ch;
-           overflow: hidden;
-           display: flex;
-           justify-content: space-between;
          }
 
-         .compressed-fragment-count-widget.warning {
-           color: var(--warning);
-         }
-
-         .compressed-fragment-count-widget.error {
-           color: var(--error);
+         .usage-bar-fill {
+           height: 100%;
+           width: 0%;
+           background: hsl(120, 60%, 45%);
+           transition: width 0.15s ease-out, background-color 0.15s ease-out;
          }
      </style>
  </head>
  <body>
     <main contenteditable='true' autofocus>
    </main>
-   <div class='compressed-fragment-count-widget' title='This is a very rough estimation of the deflated fragment size. Actual size may vary depending on the content.'>
-     <span>Deflated:</span>
-     <span><span id='compressed-fragment-count'>0</span> / <span id='compressed-fragment-allowed'>0</span></span>
+   <div class='usage-bar' title='URL space usage'>
+     <div class='usage-bar-fill' id='usage-bar-fill'></div>
    </div>
    <script>
       const editor = document.querySelector('main');
-      const charCountEl = document.getElementById('compressed-fragment-count');
-      const charAllowedEl = document.getElementById('compressed-fragment-allowed');
-      const counterWidget = document.querySelector('.compressed-fragment-count-widget');
+      const usageBarFill = document.getElementById('usage-bar-fill');
 
       const maxUrlSize = 50_000; // An arbitrary limit for fragment specifically, which I've found somewhere on SO.
       const baseUrl = window.location.href.split('#')[0];
       const allowedChars = maxUrlSize - baseUrl.length - 1; // -1 for hash sign
 
-      // Yeah, this is dumb, need to do something cleaner.
-      charAllowedEl.textContent = allowedChars;
-
       const getHash = () => location.hash.slice(1);
 
       const updateCharCount = () => {
           const currentLength = getHash().length;
-          charCountEl.textContent = currentLength;
+          const percentage = Math.min((currentLength / allowedChars) * 100, 100);
 
-          counterWidget.classList.remove('warning', 'error');
-          if (currentLength >= allowedChars) {
-              counterWidget.classList.add('error');
-          } else if (currentLength >= allowedChars - 100) {
-              counterWidget.classList.add('warning');
-          }
+          usageBarFill.style.width = percentage + '%';
+
+          const hue = Math.max(0, 120 - (percentage * 1.2));
+          usageBarFill.style.background = `hsl(${hue}, 70%, 50%)`;
       };
 
       const debounce = (callback, wait) => {
@@ -232,6 +210,7 @@
 
       document.addEventListener('DOMContentLoaded', (_) => {
           setContent(editor, getHash());
+          updateCharCount();
       })
 
       editor.addEventListener('keyup', (_) => {
