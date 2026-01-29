@@ -2,7 +2,7 @@
 <html lang='en'>
  <head>
      <meta charset='UTF-8' />
-     <meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0,viewport-fit=cover' />
+     <meta name='viewport' content='width=device-width,initial-scale=1,viewport-fit=cover' />
      <meta http-equiv='cache-control' content='no-cache, no-store, must-revalidate'>
      <title>Editor</title>
      <style>
@@ -21,7 +21,7 @@
              --bg: #0a0a0a;
              --surface: #171717;
              --text-primary: #fafafa;
-             --text-secondary: #a3a3a3;
+             --text-secondary: #636363;
              --border: #262626;
              --warning: #facc15;
              --error: #f87171;
@@ -60,14 +60,20 @@
            width: 100%;
          }
 
-         main {
-           background: var(--bg);
-           min-height: 100vh;
-           min-height: 100dvh;
-           width: 100%;
-           outline: none;
-           padding: 1rem;
-         }
+          main {
+            background: var(--bg);
+            min-height: 100vh;
+            min-height: 100dvh;
+            width: 100%;
+            padding: 1rem;
+            outline: none;
+          }
+
+          main:empty::before {
+            content: 'Your text goes here…';
+            color: var(--text-secondary);
+            pointer-events: none;
+          }
 
          .compressed-fragment-count-widget {
            position: fixed;
