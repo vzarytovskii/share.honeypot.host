@@ -74,6 +74,47 @@
         pointer-events: none;
       }
 
+      .copy-btn {
+        position: fixed;
+        top: 0.75rem;
+        right: 0.75rem;
+        z-index: 1000;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        background: none;
+        color: var(--text-primary);
+        border: 1px solid var(--border);
+        border-radius: 0.375rem;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        font-family: inherit;
+        cursor: pointer;
+        opacity: 0.6;
+        transition: opacity 0.2s ease;
+      }
+
+      .copy-btn:hover {
+        opacity: 1;
+      }
+
+      .copy-btn svg {
+        width: 0.85rem;
+        height: 0.85rem;
+        flex-shrink: 0;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .copy-btn span {
+        display: inline-block;
+        width: 5.5em;
+        text-align: center;
+      }
+
       .usage-bar {
         position: fixed;
         bottom: 0;
@@ -96,6 +137,9 @@
   <body>
     <main contenteditable='true' autofocus>
     </main>
+    <button class='copy-btn' id='copy-btn' title='Copy URL'>
+      <svg viewBox='0 0 24 24'><rect x='9' y='9' width='13' height='13' rx='2'/><path d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'/></svg><span>Copy URL</span>
+    </button>
     <div class='usage-bar' title='URL space usage'>
       <div class='usage-bar-fill' id='usage-bar-fill'></div>
     </div>
@@ -266,6 +310,14 @@
       onIdle(() => {
         setFragment(editor);
       }, 2000);
+
+      const copyBtn = document.getElementById('copy-btn');
+      const copyLabel = copyBtn.querySelector('span');
+      copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(window.location.href);
+        copyLabel.textContent = 'Copied';
+        setTimeout(() => { copyLabel.textContent = 'Copy URL'; }, 1500);
+      });
 
     </script>
   </body>
