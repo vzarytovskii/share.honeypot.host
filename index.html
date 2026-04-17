@@ -3,9 +3,13 @@
   <head>
     <meta charset='UTF-8' />
     <meta name='viewport' content='width=device-width,initial-scale=1,viewport-fit=cover' />
-    <meta http-equiv='cache-control' content='no-cache, no-store, must-revalidate'>
     <meta name='description'
       content='A minimal text editor that stores content directly in the URL.'>
+    <meta property='og:title' content='Editor' />
+    <meta property='og:description' content='A minimal text editor that stores content directly in the URL.' />
+    <meta property='og:type' content='website' />
+    <meta name='twitter:card' content='summary' />
+    <link rel='icon' href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E%F0%9F%90%9D%3C/text%3E%3C/svg%3E" />
     <title>Editor</title>
     <style>
       :root {
@@ -61,11 +65,33 @@
         min-height: 100vh;
         min-height: 100dvh;
         width: 100%;
-        padding: 1rem;
+        padding: 0.5rem;
         outline: none;
         overflow-wrap: break-word;
         word-break: break-word;
         overflow-x: hidden;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .toolbar {
+        position: fixed;
+        bottom: 1rem;
+        right: 0.75rem;
+        z-index: 1000;
+        display: inline-flex;
+        flex-direction: column;
+        gap: 0.4rem;
       }
 
       main:empty::before {
@@ -74,33 +100,37 @@
         pointer-events: none;
       }
 
-      .copy-btn {
-        position: fixed;
-        top: 0.75rem;
-        right: 0.75rem;
-        z-index: 1000;
+      .btn {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 0.3rem;
-        background: none;
+        background: var(--bg);
         color: var(--text-primary);
         border: 1px solid var(--border);
         border-radius: 0.375rem;
-        padding: 0.25rem 0.5rem;
+        padding: 0.35rem;
         font-size: 0.75rem;
         font-family: inherit;
         cursor: pointer;
-        opacity: 0.6;
-        transition: opacity 0.2s ease;
-      }
-
-      .copy-btn:hover {
         opacity: 1;
+        transition: background-color 0.15s ease, color 0.15s ease;
       }
 
-      .copy-btn svg {
-        width: 0.85rem;
-        height: 0.85rem;
+      .btn:hover,
+      .btn:focus-visible {
+        background: var(--text-primary);
+        color: var(--bg);
+      }
+
+      .btn:focus-visible {
+        outline: 2px solid currentColor;
+        outline-offset: 2px;
+      }
+
+      .btn svg {
+        width: 1rem;
+        height: 1rem;
         flex-shrink: 0;
         fill: none;
         stroke: currentColor;
@@ -109,10 +139,10 @@
         stroke-linejoin: round;
       }
 
-      .copy-btn span {
-        display: inline-block;
-        width: 5.5em;
-        text-align: center;
+      .btn.flash {
+        background: hsl(120, 60%, 45%);
+        color: #fff;
+        border-color: hsl(120, 60%, 45%);
       }
 
       .usage-bar {
@@ -131,47 +161,97 @@
         background: hsl(120, 60%, 45%);
         transition: width 0.15s ease-out, background-color 0.15s ease-out;
       }
+
+      .usage-bar.full .usage-bar-fill {
+        animation: flash 0.6s ease-out;
+      }
+
+      @keyframes flash {
+        0%, 100% { filter: brightness(1); }
+        50% { filter: brightness(1.6); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
     </style>
   </head>
 
   <body>
-    <main contenteditable='true' autofocus>
+    <main
+      contenteditable='true'
+      autofocus
+      role='textbox'
+      aria-multiline='true'
+      aria-label='Shared text editor'>
     </main>
-    <button class='copy-btn' id='copy-btn' title='Copy URL'>
-      <svg viewBox='0 0 24 24'><rect x='9' y='9' width='13' height='13' rx='2'/><path d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'/></svg><span>Copy URL</span>
-    </button>
-    <div class='usage-bar' title='URL space usage'>
+    <noscript>
+      <p style="padding:1rem">This editor requires JavaScript to compress and store text in the URL.</p>
+    </noscript>
+    <div class='toolbar' role='toolbar' aria-label='Editor actions'>
+      <button class='btn' id='clear-btn' type='button' title='Clear editor' aria-label='Clear editor'>
+        <svg viewBox='0 0 24 24' aria-hidden='true'><path d='M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6'/></svg>
+      </button>
+      <button class='btn' id='share-btn' type='button' title='Share URL' aria-label='Share URL' hidden>
+        <svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='18' cy='5' r='3'/><circle cx='6' cy='12' r='3'/><circle cx='18' cy='19' r='3'/><path d='m8.59 13.51 6.83 3.98M15.41 6.51l-6.82 3.98'/></svg>
+      </button>
+      <button class='btn copy-btn' id='copy-btn' type='button' title='Copy URL (Ctrl/Cmd+Shift+C)' aria-label='Copy URL'>
+        <svg viewBox='0 0 24 24' aria-hidden='true'><rect x='9' y='9' width='13' height='13' rx='2'/><path d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'/></svg>
+      </button>
+    </div>
+    <div
+      class='usage-bar'
+      id='usage-bar'
+      title='URL space usage'
+      role='progressbar'
+      aria-label='URL space used'
+      aria-valuemin='0'
+      aria-valuemax='100'
+      aria-valuenow='0'>
       <div class='usage-bar-fill' id='usage-bar-fill'></div>
     </div>
+    <div id='live-region' class='sr-only' role='status' aria-live='polite'></div>
     <script>
       const editor = document.querySelector('main');
+      const usageBar = document.getElementById('usage-bar');
       const usageBarFill = document.getElementById('usage-bar-fill');
+      const liveRegion = document.getElementById('live-region');
 
-      const maxUrlSize = 50_000; // An arbitrary limit for fragment specifically, which I've found somewhere on SO.
+      const maxUrlSize = 50_000; // An arbitrary "safe" size I found somewhere on SO.
       const baseUrl = window.location.href.split('#')[0];
-      const allowedChars = maxUrlSize - baseUrl.length - 1; // -1 for hash sign
+      const allowedChars = maxUrlSize - baseUrl.length - 1;
 
       const getHash = () => location.hash.slice(1);
+
+      const announce = (msg) => {
+        liveRegion.textContent = '';
+        setTimeout(() => { liveRegion.textContent = msg; }, 30);
+      };
 
       const updateCharCount = () => {
         const currentLength = getHash().length;
         const percentage = Math.min((currentLength / allowedChars) * 100, 100);
 
         usageBarFill.style.width = percentage + '%';
-
         const hue = Math.max(0, 120 - (percentage * 1.2));
         usageBarFill.style.background = `hsl(${hue}, 70%, 50%)`;
+        usageBar.setAttribute('aria-valuenow', String(Math.round(percentage)));
       };
 
       const debounce = (callback, wait) => {
         let timeoutId = null;
         return (...args) => {
           window.clearTimeout(timeoutId);
-          timeoutId = window.setTimeout(() => {
-            callback(...args);
-          }, wait);
+          timeoutId = window.setTimeout(() => { callback(...args); }, wait);
         };
-      }
+      };
 
       const resetCursor = (editor) => {
         const range = document.createRange();
@@ -180,96 +260,163 @@
         range.collapse(false);
         sel.removeAllRanges();
         sel.addRange(range);
-      }
+      };
 
-      // A very dumb compression and decompression implementaion.
-      // Probably need to revisit it in future.
-      // Also, dumb handling of non-ASCII, not proud of it.
+      const toBase64Url = (bytes) => {
+        const binary = Array.from(bytes, (b) => String.fromCharCode(b)).join('');
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      };
+
+      const fromBase64Url = (str) => {
+        const pad = str.length % 4 === 0 ? '' : '='.repeat(4 - (str.length % 4));
+        const binary = atob(str.replace(/-/g, '+').replace(/_/g, '/') + pad);
+        return Uint8Array.from(binary, (c) => c.charCodeAt(0));
+      };
+
       const deflate = async (str) => {
         if (!str) return '';
-
-        const encoder = new TextEncoder();
-        const data = encoder.encode(str);
+        const data = new TextEncoder().encode(str);
         const cs = new CompressionStream('deflate');
         const writer = cs.writable.getWriter();
-
-        writer.write(data);
-        writer.close();
-
+        writer.write(data); writer.close();
         const compressed = await new Response(cs.readable).arrayBuffer();
-        const bytes = new Uint8Array(compressed);
-
-        const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
-
-        return btoa(binary);
-      }
+        return toBase64Url(new Uint8Array(compressed));
+      };
 
       const inflate = async (str) => {
         if (!str) return '';
-
-        const binary = atob(str);
-        const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-
+        const bytes = fromBase64Url(str);
         const ds = new DecompressionStream('deflate');
         const writer = ds.writable.getWriter();
-        writer.write(bytes);
-        writer.close();
-
+        writer.write(bytes); writer.close();
         const decompressed = await new Response(ds.readable).arrayBuffer();
         return new TextDecoder().decode(decompressed);
-      }
-
-      const setContent = async (editor, content) => {
-        editor.innerHTML = await inflate(content);
-        resetCursor(editor);
-      }
-
-      const setFragment = debounce(async (editor) => {
-        if (editor.innerHTML === '<br>') {
-          editor.innerHTML = '';
-        }
-        const hash = await deflate(editor.innerHTML);
-        window.location.hash = hash;
-        updateCharCount();
-      }, 200);
-
-      const isAtLimit = () => {
-        return getHash().length >= allowedChars;
       };
 
-      // Keys that don't insert content (navigation, deletion, escape).
-      // This is dumb, there might be a better way to detect non-insertions.
+      const setContent = async (editor, content) => {
+        try {
+          editor.innerHTML = await inflate(content);
+          resetCursor(editor);
+        } catch (err) {
+          console.warn('Failed to decode URL content:', err);
+          editor.innerHTML = '';
+          announce('Could not decode URL content. Start typing to create a new share.');
+          history.replaceState(null, '', baseUrl);
+        }
+      };
+
+      const writeHash = (hash) => {
+        const url = hash ? baseUrl + '#' + hash : baseUrl;
+        // replaceState so rapid edits don't pollute back-history.
+        history.replaceState(null, '', url);
+      };
+
+      let isComposing = false;
+
+      const setFragment = debounce(async (editor) => {
+        if (isComposing) return;
+        if (editor.innerHTML === '<br>') editor.innerHTML = '';
+        try {
+          const hash = await deflate(editor.innerHTML);
+          writeHash(hash);
+          updateCharCount();
+        } catch (err) {
+          console.warn('Failed to encode content:', err);
+        }
+      }, 200);
+
+      const isAtLimit = () => getHash().length >= allowedChars;
+
+      const flashLimit = () => {
+        usageBar.classList.remove('full');
+        // Force reflow so the animation re-triggers.
+        void usageBar.offsetWidth;
+        usageBar.classList.add('full');
+        announce('URL space is full.');
+      };
+
       const NAVIGATION_KEYS = new Set(['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Escape']);
       const SHORTCUT_KEYS = new Set(['a', 'c', 'x', 'z', 'y']);
 
       const isInsertingContent = (e) => {
-        if (NAVIGATION_KEYS.has(e.key))
-          return false;
-        if ((e.ctrlKey || e.metaKey) && SHORTCUT_KEYS.has(e.key.toLowerCase()))
-          return false;
-        if (e.shiftKey && e.key.startsWith('Arrow'))
-          return false;
-
+        if (NAVIGATION_KEYS.has(e.key)) return false;
+        if ((e.ctrlKey || e.metaKey) && SHORTCUT_KEYS.has(e.key.toLowerCase())) return false;
+        if (e.shiftKey && e.key.startsWith('Arrow')) return false;
         return true;
       };
 
-      // This is actually deprecated but still supported by majority of browsers.
-      // Alternative will probably be something like inserting a line break (<br/>), or any node actually, directly.
       const insertText = (text) => document.execCommand('insertText', false, text);
       const insertLineBreak = () => document.execCommand('insertLineBreak');
 
-      document.addEventListener('DOMContentLoaded', (_) => {
+      // Light paste sanitizer: keep semantic tags, strip class/style/tracking junk.
+      const ALLOWED_TAGS = new Set(['B','STRONG','I','EM','U','A','H1','H2','H3','H4','H5','H6','UL','OL','LI','P','BR','CODE','PRE','BLOCKQUOTE','DIV','SPAN']);
+      const ALLOWED_ATTRS = { 'A': new Set(['href', 'style']) };
+
+      const sanitizeNode = (node) => {
+        for (const child of Array.from(node.childNodes)) {
+          if (child.nodeType === Node.COMMENT_NODE) {
+            child.remove();
+            continue;
+          }
+          if (child.nodeType !== Node.ELEMENT_NODE) continue;
+
+          const tag = child.tagName;
+          if (tag === 'STYLE' || tag === 'SCRIPT' || tag === 'META' || tag === 'LINK') {
+            child.remove();
+            continue;
+          }
+
+          if (!ALLOWED_TAGS.has(tag)) {
+            while (child.firstChild) node.insertBefore(child.firstChild, child);
+            child.remove();
+            continue;
+          }
+
+          const allowed = ALLOWED_ATTRS[tag] || new Set();
+          for (const attr of Array.from(child.attributes)) {
+            if (!allowed.has(attr.name)) child.removeAttribute(attr.name);
+          }
+          sanitizeNode(child);
+        }
+      };
+
+      const handlePaste = (e) => {
+        const html = e.clipboardData && e.clipboardData.getData('text/html');
+        const text = e.clipboardData && e.clipboardData.getData('text/plain');
+        if (!html && !text) return;
+
+        e.preventDefault();
+
+        if (html) {
+          const doc = new DOMParser().parseFromString(html, 'text/html');
+          // TODO: Unsure if we want to use it
+          // sanitizeNode(doc.body);
+          const cleaned = doc.body.innerHTML;
+          document.execCommand('insertHTML', false, cleaned);
+        } else {
+          insertText(text);
+        }
+      };
+
+      document.addEventListener('DOMContentLoaded', () => {
         setContent(editor, getHash());
         updateCharCount();
-      })
+      });
 
-      editor.addEventListener('keyup', (_) => {
+      editor.addEventListener('compositionstart', () => { isComposing = true; });
+      editor.addEventListener('compositionend', () => {
+        isComposing = false;
         setFragment(editor);
       });
+
+      editor.addEventListener('input', () => { if (!isComposing) setFragment(editor); });
+
+      editor.addEventListener('paste', handlePaste);
 
       editor.addEventListener('keydown', (e) => {
         if (isAtLimit() && isInsertingContent(e)) {
           e.preventDefault();
+          flashLimit();
           return;
         }
 
@@ -286,39 +433,72 @@
         if (e.key === 'Escape') {
           editor.blur();
         }
-
       });
 
-      editor.addEventListener('blur', (_) => {
-        setFragment(editor);
+      editor.addEventListener('blur', () => setFragment(editor), { passive: true });
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && !isComposing) setFragment(editor);
       }, { passive: true });
 
-      const onIdle = (callback, idleTime = 2000) => {
-        const debouncedCallback = debounce(callback, idleTime);
+      const copyBtn = document.getElementById('copy-btn');
+      const resetCopyFlash = debounce(() => { copyBtn.classList.remove('flash'); }, 1200);
 
-        // TODO: Are some of these redundant? Like `pointerdown` should cover `mouse*` and `touch*`?
-        const events = ['change', 'click', 'keydown', 'keyup', 'load', 'mousedown', 'mousemove', 'mouseup', 'orientationchange', 'pointerdown', 'resize', 'scroll', 'touchend', 'touchmove', 'touchstart'];
-        events.forEach(e => document.addEventListener(e, debouncedCallback, { passive: true }));
-
-        document.addEventListener('visibilitychange', () => {
-          document.hidden ? callback() : debouncedCallback();
-        }, { passive: true });
-
-        debouncedCallback();
+      const copyUrl = async () => {
+        const url = window.location.href;
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(url);
+          } else {
+            // Found this workaoround on SO somewhere, not even sure how to test it or whether it's needed anymore.
+            const ta = document.createElement('textarea');
+            ta.value = url;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+          }
+          copyBtn.classList.add('flash');
+          announce('URL copied to clipboard.');
+        } catch (err) {
+          console.warn('Copy failed:', err);
+          announce('Copy failed.');
+        }
+        resetCopyFlash();
       };
 
-      onIdle(() => {
-        setFragment(editor);
-      }, 2000);
+      copyBtn.addEventListener('click', copyUrl);
 
-      const copyBtn = document.getElementById('copy-btn');
-      const copyLabel = copyBtn.querySelector('span');
-      copyBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(window.location.href);
-        copyLabel.textContent = 'Copied';
-        setTimeout(() => { copyLabel.textContent = 'Copy URL'; }, 1500);
+      document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
+          e.preventDefault();
+          copyUrl();
+        }
       });
 
+      const clearBtn = document.getElementById('clear-btn');
+      clearBtn.addEventListener('click', () => {
+        editor.innerHTML = '';
+        writeHash('');
+        updateCharCount();
+        editor.focus();
+        announce('Editor cleared.');
+      });
+
+      const shareBtn = document.getElementById('share-btn');
+      if (navigator.share) {
+        shareBtn.hidden = false;
+        shareBtn.addEventListener('click', async () => {
+          try {
+            await navigator.share({ url: window.location.href, title: document.title });
+          } catch (err) {
+            if (err && err.name !== 'AbortError') console.warn('Share failed:', err);
+          }
+        });
+      }
     </script>
   </body>
 
