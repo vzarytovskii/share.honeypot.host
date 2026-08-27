@@ -267,6 +267,7 @@
       let emojiMode = false;
 
       const getHash = () => decodeURIComponent(location.hash.slice(1));
+      const getHashLength = () => location.hash.slice(1).length;
 
       const announce = (msg) => {
         liveRegion.textContent = '';
@@ -274,7 +275,7 @@
       };
 
       const updateCharCount = () => {
-        const currentLength = getHash().length;
+        const currentLength = getHashLength();
         const percentage = Math.min((currentLength / allowedChars) * 100, 100);
 
         usageBarFill.style.width = percentage + '%';
@@ -384,7 +385,7 @@
 
       const setFragment = debounce(updateFragment, 200);
 
-      const isAtLimit = () => getHash().length >= allowedChars;
+      const isAtLimit = () => getHashLength() >= allowedChars;
 
       const flashLimit = () => {
         usageBar.classList.remove('full');
@@ -507,6 +508,8 @@
         emojiBtn.setAttribute('aria-label', `${action} emoji URL encoding`);
         emojiBtn.setAttribute('aria-pressed', String(emojiMode));
       };
+
+      updateEmojiButton();
 
       emojiBtn.addEventListener('click', async () => {
         emojiMode = !emojiMode;
