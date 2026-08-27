@@ -347,21 +347,16 @@
         ]);
       };
 
-      const compressBytes = async (bytes, format) => {
-        const cs = new CompressionStream(format);
-        const writer = cs.writable.getWriter();
-        await writer.write(bytes);
-        await writer.close();
-        return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+      // Pipe through a Blob stream: awaiting writer.write()/close() before the
+      // readable side is consumed deadlocks once the stream applies backpressure.
+      const transformBytes = async (bytes, transform) => {
+        const stream = new Blob([bytes]).stream().pipeThrough(transform);
+        return new Uint8Array(await new Response(stream).arrayBuffer());
       };
 
-      const decompressBytes = async (bytes, format) => {
-        const ds = new DecompressionStream(format);
-        const writer = ds.writable.getWriter();
-        await writer.write(bytes);
-        await writer.close();
-        return new Uint8Array(await new Response(ds.readable).arrayBuffer());
-      };
+      const compressBytes = (bytes, format) => transformBytes(bytes, new CompressionStream(format));
+
+      const decompressBytes = (bytes, format) => transformBytes(bytes, new DecompressionStream(format));
 
       const deflate = async (str) => {
         if (!str) return '';
