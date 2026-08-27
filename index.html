@@ -258,14 +258,8 @@
       const maxUrlSize = 50_000; // An arbitrary "safe" size I found somewhere on SO.
       const baseUrl = window.location.href.split('#')[0];
       const allowedChars = maxUrlSize - baseUrl.length - 1;
-      const emojiOffset = 0x1F300;
-      const emojiAlphabetSize = 256;
-      const modernPrefix = '!';
-      const compressionFormats = [
-        ['r', 'deflate-raw'],
-        ['d', 'deflate'],
-        ['g', 'gzip'],
-      ];
+      const uncompressedPrefix = '!';
+      const compressionFormat = 'deflate';
       const base66Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~';
       const base66Lookup = Object.fromEntries(Array.from(base66Alphabet, (char, index) => [char, index]));
 
@@ -302,17 +296,6 @@
         range.collapse(false);
         sel.removeAllRanges();
         sel.addRange(range);
-      };
-
-      const toBase64Url = (bytes) => {
-        const binary = Array.from(bytes, (b) => String.fromCharCode(b)).join('');
-        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-      };
-
-      const fromBase64Url = (str) => {
-        const pad = str.length % 4 === 0 ? '' : '='.repeat(4 - (str.length % 4));
-        const binary = atob(str.replace(/-/g, '+').replace(/_/g, '/') + pad);
-        return Uint8Array.from(binary, (c) => c.charCodeAt(0));
       };
 
       const toBase66 = (bytes) => {
@@ -365,22 +348,6 @@
         ]);
       };
 
-      const toEmoji = (bytes) => Array.from(bytes, (byte) => String.fromCodePoint(emojiOffset + byte)).join('');
-
-      const isEmojiEncoded = (str) => {
-        const symbols = Array.from(str);
-        return symbols.length > 0 && symbols.every((symbol) => {
-          const value = symbol.codePointAt(0) - emojiOffset;
-          return value >= 0 && value < emojiAlphabetSize;
-        });
-      };
-
-      const fromEmoji = (str) => Uint8Array.from(Array.from(str), (symbol) => {
-        const value = symbol.codePointAt(0) - emojiOffset;
-        if (value < 0 || value >= emojiAlphabetSize) throw new Error('Invalid emoji URL content');
-        return value;
-      });
-
       const compressBytes = async (bytes, format) => {
         const cs = new CompressionStream(format);
         const writer = cs.writable.getWriter();
@@ -399,16 +366,14 @@
         if (!str) return '';
         const data = new TextEncoder().encode(str);
 
-        let best = modernPrefix + 'n' + toBase66(data);
+        let best = uncompressedPrefix + toBase66(data);
         if (!window.CompressionStream) return best;
 
-        for (const [id, format] of compressionFormats) {
-          try {
-            const encoded = modernPrefix + id + toBase66(await compressBytes(data, format));
-            if (encoded.length < best.length) best = encoded;
-          } catch (err) {
-            // Ignore unsupported formats; the shortest compatible result wins.
-          }
+        try {
+          const encoded = toBase66(await compressBytes(data, compressionFormat));
+          if (encoded.length < best.length) best = encoded;
+        } catch (err) {
+          // Fall back to uncompressed content when native compression is unavailable.
         }
 
         return best;
@@ -416,16 +381,12 @@
 
       const inflate = async (str) => {
         if (!str) return '';
-        if (str.startsWith(modernPrefix)) {
-          const formatId = str[modernPrefix.length];
-          const bytes = fromBase66(str.slice(modernPrefix.length + 1));
-          const format = compressionFormats.find(([id]) => id === formatId);
-          const decompressed = format ? await decompressBytes(bytes, format[1]) : bytes;
-          return new TextDecoder().decode(decompressed);
+        if (str.startsWith(uncompressedPrefix)) {
+          return new TextDecoder().decode(fromBase66(str.slice(1)));
         }
 
-        const bytes = isEmojiEncoded(str) ? fromEmoji(str) : fromBase64Url(str);
-        const decompressed = await decompressBytes(bytes, 'deflate');
+        const bytes = fromBase66(str);
+        const decompressed = await decompressBytes(bytes, compressionFormat);
         return new TextDecoder().decode(decompressed);
       };
 
