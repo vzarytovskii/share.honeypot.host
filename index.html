@@ -236,9 +236,6 @@
       <button class='btn copy-btn' id='copy-btn' type='button' title='Copy URL (Ctrl/Cmd+Shift+C)' aria-label='Copy URL'>
         <svg viewBox='0 0 24 24' aria-hidden='true'><rect x='9' y='9' width='13' height='13' rx='2'/><path d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'/></svg>
       </button>
-      <button class='btn' id='emoji-btn' type='button' title='Enable emoji URL encoding' aria-label='Enable emoji URL encoding' aria-pressed='false'>
-        ☐
-      </button>
     </div>
     <div
       class='usage-bar'
@@ -257,14 +254,20 @@
       const usageBar = document.getElementById('usage-bar');
       const usageBarFill = document.getElementById('usage-bar-fill');
       const liveRegion = document.getElementById('live-region');
-      const emojiBtn = document.getElementById('emoji-btn');
 
       const maxUrlSize = 50_000; // An arbitrary "safe" size I found somewhere on SO.
       const baseUrl = window.location.href.split('#')[0];
       const allowedChars = maxUrlSize - baseUrl.length - 1;
       const emojiOffset = 0x1F300;
       const emojiAlphabetSize = 256;
-      let emojiMode = false;
+      const modernPrefix = '!';
+      const compressionFormats = [
+        ['r', 'deflate-raw'],
+        ['d', 'deflate'],
+        ['g', 'gzip'],
+      ];
+      const base66Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~';
+      const base66Lookup = Object.fromEntries(Array.from(base66Alphabet, (char, index) => [char, index]));
 
       const getHash = () => decodeURIComponent(location.hash.slice(1));
       const getHashLength = () => location.hash.slice(1).length;
@@ -312,6 +315,56 @@
         return Uint8Array.from(binary, (c) => c.charCodeAt(0));
       };
 
+      const toBase66 = (bytes) => {
+        let zeroes = 0;
+        while (zeroes < bytes.length && bytes[zeroes] === 0) zeroes++;
+
+        const digits = [];
+        for (const byte of bytes.slice(zeroes)) {
+          let carry = byte;
+          for (let i = 0; i < digits.length; i++) {
+            const value = digits[i] * 256 + carry;
+            digits[i] = value % base66Alphabet.length;
+            carry = Math.floor(value / base66Alphabet.length);
+          }
+          while (carry > 0) {
+            digits.push(carry % base66Alphabet.length);
+            carry = Math.floor(carry / base66Alphabet.length);
+          }
+        }
+
+        return base66Alphabet[0].repeat(zeroes)
+          + digits.reverse().map((digit) => base66Alphabet[digit]).join('');
+      };
+
+      const fromBase66 = (str) => {
+        const encoded = str;
+        let zeroes = 0;
+        while (zeroes < encoded.length && encoded[zeroes] === base66Alphabet[0]) zeroes++;
+
+        const bytes = [];
+        for (const char of encoded.slice(zeroes)) {
+          const digit = base66Lookup[char];
+          if (digit === undefined) throw new Error('Invalid base66 URL content');
+
+          let carry = digit;
+          for (let i = 0; i < bytes.length; i++) {
+            const value = bytes[i] * base66Alphabet.length + carry;
+            bytes[i] = value & 0xff;
+            carry = value >> 8;
+          }
+          while (carry > 0) {
+            bytes.push(carry & 0xff);
+            carry >>= 8;
+          }
+        }
+
+        return Uint8Array.from([
+          ...new Uint8Array(zeroes),
+          ...bytes.reverse(),
+        ]);
+      };
+
       const toEmoji = (bytes) => Array.from(bytes, (byte) => String.fromCodePoint(emojiOffset + byte)).join('');
 
       const isEmojiEncoded = (str) => {
@@ -328,31 +381,56 @@
         return value;
       });
 
-      const deflate = async (str, useEmoji = false) => {
+      const compressBytes = async (bytes, format) => {
+        const cs = new CompressionStream(format);
+        const writer = cs.writable.getWriter();
+        writer.write(bytes); writer.close();
+        return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+      };
+
+      const decompressBytes = async (bytes, format) => {
+        const ds = new DecompressionStream(format);
+        const writer = ds.writable.getWriter();
+        writer.write(bytes); writer.close();
+        return new Uint8Array(await new Response(ds.readable).arrayBuffer());
+      };
+
+      const deflate = async (str) => {
         if (!str) return '';
         const data = new TextEncoder().encode(str);
-        const cs = new CompressionStream('deflate');
-        const writer = cs.writable.getWriter();
-        writer.write(data); writer.close();
-        const compressed = await new Response(cs.readable).arrayBuffer();
-        const bytes = new Uint8Array(compressed);
-        return useEmoji ? toEmoji(bytes) : toBase64Url(bytes);
+
+        let best = modernPrefix + 'n' + toBase66(data);
+        if (!window.CompressionStream) return best;
+
+        for (const [id, format] of compressionFormats) {
+          try {
+            const encoded = modernPrefix + id + toBase66(await compressBytes(data, format));
+            if (encoded.length < best.length) best = encoded;
+          } catch (err) {
+            // Ignore unsupported formats; the shortest compatible result wins.
+          }
+        }
+
+        return best;
       };
 
       const inflate = async (str) => {
         if (!str) return '';
+        if (str.startsWith(modernPrefix)) {
+          const formatId = str[modernPrefix.length];
+          const bytes = fromBase66(str.slice(modernPrefix.length + 1));
+          const format = compressionFormats.find(([id]) => id === formatId);
+          const decompressed = format ? await decompressBytes(bytes, format[1]) : bytes;
+          return new TextDecoder().decode(decompressed);
+        }
+
         const bytes = isEmojiEncoded(str) ? fromEmoji(str) : fromBase64Url(str);
-        const ds = new DecompressionStream('deflate');
-        const writer = ds.writable.getWriter();
-        writer.write(bytes); writer.close();
-        const decompressed = await new Response(ds.readable).arrayBuffer();
+        const decompressed = await decompressBytes(bytes, 'deflate');
         return new TextDecoder().decode(decompressed);
       };
 
       const setContent = async (editor, content) => {
         try {
-          emojiMode = isEmojiEncoded(content);
-          updateEmojiButton();
           editor.innerHTML = await inflate(content);
           resetCursor(editor);
         } catch (err) {
@@ -375,7 +453,7 @@
         if (isComposing) return;
         if (editor.innerHTML === '<br>') editor.innerHTML = '';
         try {
-          const hash = await deflate(editor.innerHTML, emojiMode);
+          const hash = await deflate(editor.innerHTML);
           writeHash(hash);
           updateCharCount();
         } catch (err) {
@@ -500,23 +578,6 @@
       document.addEventListener('visibilitychange', () => {
         if (document.hidden && !isComposing) setFragment(editor);
       }, { passive: true });
-
-      const updateEmojiButton = () => {
-        const action = emojiMode ? 'Disable' : 'Enable';
-        emojiBtn.textContent = emojiMode ? '✅' : '☐';
-        emojiBtn.title = `${action} emoji URL encoding`;
-        emojiBtn.setAttribute('aria-label', `${action} emoji URL encoding`);
-        emojiBtn.setAttribute('aria-pressed', String(emojiMode));
-      };
-
-      updateEmojiButton();
-
-      emojiBtn.addEventListener('click', async () => {
-        emojiMode = !emojiMode;
-        updateEmojiButton();
-        await updateFragment(editor);
-        announce(`Emoji URL encoding ${emojiMode ? 'enabled' : 'disabled'}.`);
-      });
 
       const copyBtn = document.getElementById('copy-btn');
       const resetCopyFlash = debounce(() => { copyBtn.classList.remove('flash'); }, 1200);
