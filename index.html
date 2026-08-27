@@ -321,12 +321,11 @@
       };
 
       const fromBase66 = (str) => {
-        const encoded = str;
         let zeroes = 0;
-        while (zeroes < encoded.length && encoded[zeroes] === base66Alphabet[0]) zeroes++;
+        while (zeroes < str.length && str[zeroes] === base66Alphabet[0]) zeroes++;
 
         const bytes = [];
-        for (const char of encoded.slice(zeroes)) {
+        for (const char of str.slice(zeroes)) {
           const digit = base66Lookup[char];
           if (digit === undefined) throw new Error('Invalid base66 URL content');
 
