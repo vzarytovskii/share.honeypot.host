@@ -1,1 +1,1 @@
-A small in-browser text sharing. Fully client-side, compresses and encodes all text as fragment. Limited by URL lenght in different browsers.
+A small in-browser text-sharing tool. Fully client-side, compresses with broadly supported native deflate when it makes URLs smaller, encodes with a dense URL-safe alphabet, and stores all text as a fragment. Limited by URL length in different browsers.
