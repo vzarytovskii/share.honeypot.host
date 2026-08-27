@@ -236,6 +236,9 @@
       <button class='btn copy-btn' id='copy-btn' type='button' title='Copy URL (Ctrl/Cmd+Shift+C)' aria-label='Copy URL'>
         <svg viewBox='0 0 24 24' aria-hidden='true'><rect x='9' y='9' width='13' height='13' rx='2'/><path d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'/></svg>
       </button>
+      <button class='btn' id='emoji-btn' type='button' title='Enable emoji URL encoding' aria-label='Enable emoji URL encoding' aria-pressed='false'>
+        ☐
+      </button>
     </div>
     <div
       class='usage-bar'
@@ -254,12 +257,16 @@
       const usageBar = document.getElementById('usage-bar');
       const usageBarFill = document.getElementById('usage-bar-fill');
       const liveRegion = document.getElementById('live-region');
+      const emojiBtn = document.getElementById('emoji-btn');
 
       const maxUrlSize = 50_000; // An arbitrary "safe" size I found somewhere on SO.
       const baseUrl = window.location.href.split('#')[0];
       const allowedChars = maxUrlSize - baseUrl.length - 1;
+      const emojiOffset = 0x1F300;
+      const emojiAlphabetSize = 256;
+      let emojiMode = false;
 
-      const getHash = () => location.hash.slice(1);
+      const getHash = () => decodeURIComponent(location.hash.slice(1));
 
       const announce = (msg) => {
         liveRegion.textContent = '';
@@ -304,19 +311,36 @@
         return Uint8Array.from(binary, (c) => c.charCodeAt(0));
       };
 
-      const deflate = async (str) => {
+      const toEmoji = (bytes) => Array.from(bytes, (byte) => String.fromCodePoint(emojiOffset + byte)).join('');
+
+      const isEmojiEncoded = (str) => {
+        const symbols = Array.from(str);
+        return symbols.length > 0 && symbols.every((symbol) => {
+          const value = symbol.codePointAt(0) - emojiOffset;
+          return value >= 0 && value < emojiAlphabetSize;
+        });
+      };
+
+      const fromEmoji = (str) => Uint8Array.from(Array.from(str), (symbol) => {
+        const value = symbol.codePointAt(0) - emojiOffset;
+        if (value < 0 || value >= emojiAlphabetSize) throw new Error('Invalid emoji URL content');
+        return value;
+      });
+
+      const deflate = async (str, useEmoji = false) => {
         if (!str) return '';
         const data = new TextEncoder().encode(str);
         const cs = new CompressionStream('deflate');
         const writer = cs.writable.getWriter();
         writer.write(data); writer.close();
         const compressed = await new Response(cs.readable).arrayBuffer();
-        return toBase64Url(new Uint8Array(compressed));
+        const bytes = new Uint8Array(compressed);
+        return useEmoji ? toEmoji(bytes) : toBase64Url(bytes);
       };
 
       const inflate = async (str) => {
         if (!str) return '';
-        const bytes = fromBase64Url(str);
+        const bytes = isEmojiEncoded(str) ? fromEmoji(str) : fromBase64Url(str);
         const ds = new DecompressionStream('deflate');
         const writer = ds.writable.getWriter();
         writer.write(bytes); writer.close();
@@ -326,6 +350,8 @@
 
       const setContent = async (editor, content) => {
         try {
+          emojiMode = isEmojiEncoded(content);
+          updateEmojiButton();
           editor.innerHTML = await inflate(content);
           resetCursor(editor);
         } catch (err) {
@@ -344,17 +370,19 @@
 
       let isComposing = false;
 
-      const setFragment = debounce(async (editor) => {
+      const updateFragment = async (editor) => {
         if (isComposing) return;
         if (editor.innerHTML === '<br>') editor.innerHTML = '';
         try {
-          const hash = await deflate(editor.innerHTML);
+          const hash = await deflate(editor.innerHTML, emojiMode);
           writeHash(hash);
           updateCharCount();
         } catch (err) {
           console.warn('Failed to encode content:', err);
         }
-      }, 200);
+      };
+
+      const setFragment = debounce(updateFragment, 200);
 
       const isAtLimit = () => getHash().length >= allowedChars;
 
@@ -471,6 +499,21 @@
       document.addEventListener('visibilitychange', () => {
         if (document.hidden && !isComposing) setFragment(editor);
       }, { passive: true });
+
+      const updateEmojiButton = () => {
+        const action = emojiMode ? 'Disable' : 'Enable';
+        emojiBtn.textContent = emojiMode ? '✅' : '☐';
+        emojiBtn.title = `${action} emoji URL encoding`;
+        emojiBtn.setAttribute('aria-label', `${action} emoji URL encoding`);
+        emojiBtn.setAttribute('aria-pressed', String(emojiMode));
+      };
+
+      emojiBtn.addEventListener('click', async () => {
+        emojiMode = !emojiMode;
+        updateEmojiButton();
+        await updateFragment(editor);
+        announce(`Emoji URL encoding ${emojiMode ? 'enabled' : 'disabled'}.`);
+      });
 
       const copyBtn = document.getElementById('copy-btn');
       const resetCopyFlash = debounce(() => { copyBtn.classList.remove('flash'); }, 1200);
