@@ -350,14 +350,16 @@
       const compressBytes = async (bytes, format) => {
         const cs = new CompressionStream(format);
         const writer = cs.writable.getWriter();
-        writer.write(bytes); writer.close();
+        await writer.write(bytes);
+        await writer.close();
         return new Uint8Array(await new Response(cs.readable).arrayBuffer());
       };
 
       const decompressBytes = async (bytes, format) => {
         const ds = new DecompressionStream(format);
         const writer = ds.writable.getWriter();
-        writer.write(bytes); writer.close();
+        await writer.write(bytes);
+        await writer.close();
         return new Uint8Array(await new Response(ds.readable).arrayBuffer());
       };
 
