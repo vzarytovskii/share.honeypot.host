@@ -255,14 +255,13 @@
       const usageBarFill = document.getElementById('usage-bar-fill');
       const liveRegion = document.getElementById('live-region');
 
-      const maxUrlSize = 50_000;
+      const maxUrlSize = 50_000; // Some arbitrary limit I found on StackOverflow.
       const baseUrl = window.location.href.split('#')[0];
       const allowedChars = maxUrlSize - baseUrl.length - 1;
       const uncompressedPrefix = '!';
       const compressionFormat = 'deflate-raw';
-      const legacyCompressionFormat = 'deflate';
-      const base66Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~';
-      const base66Lookup = Object.fromEntries(Array.from(base66Alphabet, (char, index) => [char, index]));
+      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~=?&/[]\'()*+,;$@';
+      const lookup = Object.fromEntries(Array.from(alphabet, (char, index) => [char, index]));
 
       const getHash = () => decodeURIComponent(location.hash.slice(1));
       const getHashLength = () => location.hash.slice(1).length;
@@ -299,7 +298,7 @@
         sel.addRange(range);
       };
 
-      const toBase66 = (bytes) => {
+      const encode = (bytes) => {
         let zeroes = 0;
         while (zeroes < bytes.length && bytes[zeroes] === 0) zeroes++;
 
@@ -308,31 +307,31 @@
           let carry = byte;
           for (let i = 0; i < digits.length; i++) {
             const value = digits[i] * 256 + carry;
-            digits[i] = value % base66Alphabet.length;
-            carry = Math.floor(value / base66Alphabet.length);
+            digits[i] = value % alphabet.length;
+            carry = Math.floor(value / alphabet.length);
           }
           while (carry > 0) {
-            digits.push(carry % base66Alphabet.length);
-            carry = Math.floor(carry / base66Alphabet.length);
+            digits.push(carry % alphabet.length);
+            carry = Math.floor(carry / alphabet.length);
           }
         }
 
-        return base66Alphabet[0].repeat(zeroes)
-          + digits.reverse().map((digit) => base66Alphabet[digit]).join('');
+        return alphabet[0].repeat(zeroes)
+          + digits.reverse().map((digit) => alphabet[digit]).join('');
       };
 
-      const fromBase66 = (str) => {
+      const decode = (str) => {
         let zeroes = 0;
-        while (zeroes < str.length && str[zeroes] === base66Alphabet[0]) zeroes++;
+        while (zeroes < str.length && str[zeroes] === alphabet[0]) zeroes++;
 
         const bytes = [];
         for (const char of str.slice(zeroes)) {
-          const digit = base66Lookup[char];
-          if (digit === undefined) throw new Error('Invalid base66 URL content');
+          const digit = lookup[char];
+          if (digit === undefined) throw new Error('Invalid encoded URL content');
 
           let carry = digit;
           for (let i = 0; i < bytes.length; i++) {
-            const value = bytes[i] * base66Alphabet.length + carry;
+            const value = bytes[i] * alphabet.length + carry;
             bytes[i] = value & 0xff;
             carry = value >> 8;
           }
@@ -364,28 +363,22 @@
         if (window.CompressionStream) {
           try {
             const compressed = await compressBytes(data, compressionFormat);
-            if (compressed.length < data.length) return toBase66(compressed);
+            if (compressed.length < data.length) return encode(compressed);
           } catch (err) {
             console.warn('Compression failed, storing content uncompressed:', err);
           }
         }
 
-        return uncompressedPrefix + toBase66(data);
+        return uncompressedPrefix + encode(data);
       };
 
       const inflate = async (str) => {
         if (!str) return '';
         if (str.startsWith(uncompressedPrefix)) {
-          return new TextDecoder().decode(fromBase66(str.slice(1)));
+          return new TextDecoder().decode(decode(str.slice(1)));
         }
-
-        const bytes = fromBase66(str);
-        let decompressed;
-        try {
-          decompressed = await decompressBytes(bytes, compressionFormat);
-        } catch (err) {
-          decompressed = await decompressBytes(bytes, legacyCompressionFormat);
-        }
+        const bytes = decode(str);
+        let decompressed = await decompressBytes(bytes, compressionFormat);
         return new TextDecoder().decode(decompressed);
       };
 
