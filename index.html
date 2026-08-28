@@ -255,11 +255,12 @@
       const usageBarFill = document.getElementById('usage-bar-fill');
       const liveRegion = document.getElementById('live-region');
 
-      const maxUrlSize = 50_000; // An arbitrary "safe" size I found somewhere on SO.
+      const maxUrlSize = 50_000;
       const baseUrl = window.location.href.split('#')[0];
       const allowedChars = maxUrlSize - baseUrl.length - 1;
       const uncompressedPrefix = '!';
-      const compressionFormat = 'deflate';
+      const compressionFormat = 'deflate-raw';
+      const legacyCompressionFormat = 'deflate';
       const base66Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~';
       const base66Lookup = Object.fromEntries(Array.from(base66Alphabet, (char, index) => [char, index]));
 
@@ -347,8 +348,6 @@
         ]);
       };
 
-      // Pipe through a Blob stream: awaiting writer.write()/close() before the
-      // readable side is consumed deadlocks once the stream applies backpressure.
       const transformBytes = async (bytes, transform) => {
         const stream = new Blob([bytes]).stream().pipeThrough(transform);
         return new Uint8Array(await new Response(stream).arrayBuffer());
@@ -362,17 +361,16 @@
         if (!str) return '';
         const data = new TextEncoder().encode(str);
 
-        let best = uncompressedPrefix + toBase66(data);
-        if (!window.CompressionStream) return best;
-
-        try {
-          const encoded = toBase66(await compressBytes(data, compressionFormat));
-          if (encoded.length < best.length) best = encoded;
-        } catch (err) {
-          // Fall back to uncompressed content when native compression is unavailable.
+        if (window.CompressionStream) {
+          try {
+            const compressed = await compressBytes(data, compressionFormat);
+            if (compressed.length < data.length) return toBase66(compressed);
+          } catch (err) {
+            console.warn('Compression failed, storing content uncompressed:', err);
+          }
         }
 
-        return best;
+        return uncompressedPrefix + toBase66(data);
       };
 
       const inflate = async (str) => {
@@ -382,7 +380,12 @@
         }
 
         const bytes = fromBase66(str);
-        const decompressed = await decompressBytes(bytes, compressionFormat);
+        let decompressed;
+        try {
+          decompressed = await decompressBytes(bytes, compressionFormat);
+        } catch (err) {
+          decompressed = await decompressBytes(bytes, legacyCompressionFormat);
+        }
         return new TextDecoder().decode(decompressed);
       };
 
@@ -400,7 +403,6 @@
 
       const writeHash = (hash) => {
         const url = hash ? baseUrl + '#' + hash : baseUrl;
-        // replaceState so rapid edits don't pollute back-history.
         history.replaceState(null, '', url);
       };
 
@@ -424,7 +426,6 @@
 
       const flashLimit = () => {
         usageBar.classList.remove('full');
-        // Force reflow so the animation re-triggers.
         void usageBar.offsetWidth;
         usageBar.classList.add('full');
         announce('URL space is full.');
@@ -443,7 +444,6 @@
       const insertText = (text) => document.execCommand('insertText', false, text);
       const insertLineBreak = () => document.execCommand('insertLineBreak');
 
-      // Light paste sanitizer: keep semantic tags, strip class/style/tracking junk.
       const ALLOWED_TAGS = new Set(['B','STRONG','I','EM','U','A','H1','H2','H3','H4','H5','H6','UL','OL','LI','P','BR','CODE','PRE','BLOCKQUOTE','DIV','SPAN']);
       const ALLOWED_ATTRS = { 'A': new Set(['href', 'style']) };
 
@@ -484,8 +484,6 @@
 
         if (html) {
           const doc = new DOMParser().parseFromString(html, 'text/html');
-          // TODO: Unsure if we want to use it
-          // sanitizeNode(doc.body);
           const cleaned = doc.body.innerHTML;
           document.execCommand('insertHTML', false, cleaned);
         } else {
@@ -545,7 +543,6 @@
           if (navigator.clipboard && window.isSecureContext) {
             await navigator.clipboard.writeText(url);
           } else {
-            // Found this workaoround on SO somewhere, not even sure how to test it or whether it's needed anymore.
             const ta = document.createElement('textarea');
             ta.value = url;
             ta.setAttribute('readonly', '');
