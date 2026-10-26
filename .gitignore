@@ -1,0 +1,11 @@
+*
+
+!*/
+
+!/.gitignore
+
+!/.github/workflows/static.yml
+!/CNAME
+!/README.md
+!/index.html
+!/robots.txt
